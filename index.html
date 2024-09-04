@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Models Table</title>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- React and ReactDOM -->
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/17.0.2/umd/react.production.min.js"></script>
+    <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/17.0.2/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel for JSX transformation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/6.26.0/babel.min.js"></script>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        // shadcn/ui components (simplified versions)
+        const Table = ({ children }) => <table className="min-w-full divide-y divide-gray-200">{children}</table>;
+        const TableHeader = ({ children }) => <thead className="bg-gray-50">{children}</thead>;
+        const TableBody = ({ children }) => <tbody className="bg-white divide-y divide-gray-200">{children}</tbody>;
+        const TableRow = ({ children }) => <tr>{children}</tr>;
+        const TableHead = ({ children, className }) => <th scope="col" className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${className}`}>{children}</th>;
+        const TableCell = ({ children, className }) => <td className={`px-6 py-4 whitespace-nowrap ${className}`}>{children}</td>;
+        const Input = (props) => <input {...props} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />;
+        const Button = ({ children, onClick, variant }) => (
+            <button
+                onClick={onClick}
+                className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 ${variant === 'ghost' ? 'bg-transparent text-gray-700 hover:bg-gray-50' : ''}`}
+            >
+                {children}
+            </button>
+        );
+        const Select = ({ children, value, onChange }) => (
+            <select 
+                value={value} 
+                onChange={onChange}
+                className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md"
+            >
+                {children}
+            </select>
+        );
+
+        // AI Models Table Component
+        const AIModelsTable = () => {
+            const [models, setModels] = React.useState([]);
+            const [filteredModels, setFilteredModels] = React.useState([]);
+            const [nameFilter, setNameFilter] = React.useState('');
+            const [contextFilter, setContextFilter] = React.useState('');
+            const [createdFilter, setCreatedFilter] = React.useState('all');
+            const [sortField, setSortField] = React.useState('pricing.prompt');
+            const [sortDirection, setSortDirection] = React.useState('asc');
+
+            React.useEffect(() => {
+                fetch('https://openrouter.ai/api/v1/models')
+                    .then(response => response.json())
+                    .then(data => {
+                        const sortedModels = data.data.sort((a, b) => 
+                            (a.pricing.prompt + a.pricing.completion) - (b.pricing.prompt + b.pricing.completion)
+                        );
+                        setModels(sortedModels);
+                        setFilteredModels(sortedModels);
+                    });
+            }, []);
+
+            React.useEffect(() => {
+                let filtered = models;
+                
+                if (nameFilter) {
+                    filtered = filtered.filter(model => 
+                        model.name.toLowerCase().includes(nameFilter.toLowerCase())
+                    );
+                }
+                
+                if (contextFilter) {
+                    filtered = filtered.filter(model => 
+                        model.context_length >= parseInt(contextFilter)
+                    );
+                }
+
+                if (createdFilter !== 'all') {
+                    const now = new Date();
+                    const filterDate = new Date();
+                    switch (createdFilter) {
+                        case 'week':
+                            filterDate.setDate(now.getDate() - 7);
+                            break;
+                        case 'month':
+                            filterDate.setMonth(now.getMonth() - 1);
+                            break;
+                        case '3months':
+                            filterDate.setMonth(now.getMonth() - 3);
+                            break;
+                        case 'year':
+                            filterDate.setFullYear(now.getFullYear() - 1);
+                            break;
+                    }
+                    filtered = filtered.filter(model => 
+                        new Date(model.created * 1000) >= filterDate
+                    );
+                }
+                
+                filtered.sort((a, b) => {
+                    const aValue = sortField.split('.').reduce((obj, key) => obj[key], a);
+                    const bValue = sortField.split('.').reduce((obj, key) => obj[key], b);
+                    
+                    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+                    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+                    return 0;
+                });
+                
+                setFilteredModels(filtered);
+            }, [models, nameFilter, contextFilter, createdFilter, sortField, sortDirection]);
+
+            const handleSort = (field) => {
+                if (field === sortField) {
+                    setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+                } else {
+                    setSortField(field);
+                    setSortDirection('asc');
+                }
+            };
+
+            return (
+                <div className="container mx-auto p-4">
+                    <h1 className="text-2xl font-bold mb-4">AI Models</h1>
+                    <div className="mb-4 flex gap-4 flex-wrap">
+                        <Input
+                            placeholder="Filter by name"
+                            value={nameFilter}
+                            onChange={(e) => setNameFilter(e.target.value)}
+                            className="max-w-sm"
+                        />
+                        <Input
+                            type="number"
+                            placeholder="Min context length"
+                            value={contextFilter}
+                            onChange={(e) => setContextFilter(e.target.value)}
+                            className="max-w-sm"
+                        />
+                        <Select 
+                            value={createdFilter} 
+                            onChange={(e) => setCreatedFilter(e.target.value)}
+                        >
+                            <option value="all">All time</option>
+                            <option value="week">Last week</option>
+                            <option value="month">Last month</option>
+                            <option value="3months">Last 3 months</option>
+                            <option value="year">Last year</option>
+                        </Select>
+                        <Select 
+                            value={sortField} 
+                            onChange={(e) => setSortField(e.target.value)}
+                        >
+                            <option value="name">Name</option>
+                            <option value="pricing.prompt">Prompt Price</option>
+                            <option value="pricing.completion">Completion Price</option>
+                            <option value="context_length">Context Length</option>
+                            <option value="architecture.modality">Modality</option>
+                            <option value="created">Created Date</option>
+                        </Select>
+                        <Button onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}>
+                            {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
+                        </Button>
+                    </div>
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[200px]">
+                                    <Button variant="ghost" onClick={() => handleSort('name')}>
+                                        Name <span className="ml-2">↕</span>
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('pricing.prompt')}>
+                                        Prompt Price <span className="ml-2">↕</span>
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('pricing.completion')}>
+                                        Completion Price <span className="ml-2">↕</span>
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('context_length')}>
+                                        Context Length <span className="ml-2">↕</span>
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('architecture.modality')}>
+                                        Modality <span className="ml-2">↕</span>
+                                    </Button>
+                                </TableHead>
+                                <TableHead>
+                                    <Button variant="ghost" onClick={() => handleSort('created')}>
+                                        Created <span className="ml-2">↕</span>
+                                    </Button>
+                                </TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {filteredModels.map((model) => (
+                                <TableRow key={model.id}>
+                                    <TableCell className="font-medium">
+                                        <a href={`https://openrouter.ai/models/${model.id}`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                                            {model.name}
+                                        </a>
+                                    </TableCell>
+                                    <TableCell>{parseFloat(model.pricing.prompt).toFixed(7)}</TableCell>
+                                    <TableCell>{parseFloat(model.pricing.completion).toFixed(7)}</TableCell>
+                                    <TableCell>{model.context_length.toLocaleString()}</TableCell>
+                                    <TableCell>{model.architecture.modality}</TableCell>
+                                    <TableCell>{new Date(model.created * 1000).toLocaleDateString()}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
+            );
+        };
+
+        ReactDOM.render(<AIModelsTable />, document.getElementById('root'));
+    </script>
+</body>
+</html>
