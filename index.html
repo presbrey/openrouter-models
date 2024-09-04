@@ -21,10 +21,10 @@
     <script type="text/babel">
         // shadcn/ui components (simplified versions)
         const Table = ({ children }) => <table className="min-w-full divide-y divide-gray-200">{children}</table>;
-        const TableHeader = ({ children }) => <thead className="bg-gray-50">{children}</thead>;
+        const TableHeader = ({ children }) => <thead className="bg-gray-100">{children}</thead>;
         const TableBody = ({ children }) => <tbody className="bg-white divide-y divide-gray-200">{children}</tbody>;
         const TableRow = ({ children }) => <tr>{children}</tr>;
-        const TableHead = ({ children, className }) => <th scope="col" className={`px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider ${className}`}>{children}</th>;
+        const TableHead = ({ children, className }) => <th scope="col" className={`px-6 py-3 text-left text-xs font-medium text-gray-700 uppercase tracking-wider ${className}`}>{children}</th>;
         const TableCell = ({ children, className }) => <td className={`px-6 py-4 whitespace-nowrap ${className}`}>{children}</td>;
         const Input = (props) => <input {...props} className="shadow-sm focus:ring-indigo-500 focus:border-indigo-500 block w-full sm:text-sm border-gray-300 rounded-md" />;
         const Button = ({ children, onClick, variant }) => (
@@ -51,6 +51,7 @@
             const [filteredModels, setFilteredModels] = React.useState([]);
             const [nameFilter, setNameFilter] = React.useState('');
             const [contextFilter, setContextFilter] = React.useState('');
+            const [maxPriceFilter, setMaxPriceFilter] = React.useState('');
             const [createdFilter, setCreatedFilter] = React.useState('all');
             const [sortField, setSortField] = React.useState('pricing.prompt');
             const [sortDirection, setSortDirection] = React.useState('asc');
@@ -79,6 +80,13 @@
                 if (contextFilter) {
                     filtered = filtered.filter(model => 
                         model.context_length >= parseInt(contextFilter)
+                    );
+                }
+
+                if (maxPriceFilter) {
+                    const maxPrice = parseFloat(maxPriceFilter);
+                    filtered = filtered.filter(model => 
+                        (parseFloat(model.pricing.prompt) + parseFloat(model.pricing.completion)) <= maxPrice
                     );
                 }
 
@@ -114,7 +122,7 @@
                 });
                 
                 setFilteredModels(filtered);
-            }, [models, nameFilter, contextFilter, createdFilter, sortField, sortDirection]);
+            }, [models, nameFilter, contextFilter, maxPriceFilter, createdFilter, sortField, sortDirection]);
 
             const handleSort = (field) => {
                 if (field === sortField) {
@@ -128,20 +136,36 @@
             return (
                 <div className="container mx-auto p-4">
                     <h1 className="text-2xl font-bold mb-4">Table View of <a href="https://openrouter.ai/models" target="_blank">OpenRouter AI Models</a></h1>
-                    <div className="mb-4 flex gap-4 flex-wrap">
+                    <div className="mb-4 flex flex-wrap gap-4 items-end">
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700">Name</label>
                         <Input
                             placeholder="Filter by name"
                             value={nameFilter}
                             onChange={(e) => setNameFilter(e.target.value)}
-                            className="max-w-sm"
                         />
+                        </div>
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700">Min Context Length</label>
                         <Input
                             type="number"
                             placeholder="Min context length"
                             value={contextFilter}
                             onChange={(e) => setContextFilter(e.target.value)}
-                            className="max-w-sm"
                         />
+                        </div>
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700">Max Total Price</label>
+                            <Input
+                                type="number"
+                                step="0.0000001"
+                                placeholder="Max total price"
+                                value={maxPriceFilter}
+                                onChange={(e) => setMaxPriceFilter(e.target.value)}
+                            />
+                        </div>
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700">Created Date</label>
                         <Select 
                             value={createdFilter} 
                             onChange={(e) => setCreatedFilter(e.target.value)}
@@ -152,6 +176,9 @@
                             <option value="3months">Last 3 months</option>
                             <option value="year">Last year</option>
                         </Select>
+                        </div>
+                        <div className="flex-1 min-w-[200px]">
+                            <label className="block text-sm font-medium text-gray-700">Sort By</label>
                         <Select 
                             value={sortField} 
                             onChange={(e) => setSortField(e.target.value)}
@@ -163,9 +190,12 @@
                             <option value="architecture.modality">Modality</option>
                             <option value="created">Created Date</option>
                         </Select>
+                        </div>
+                        <div>
                         <Button onClick={() => setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc')}>
                             {sortDirection === 'asc' ? 'Ascending' : 'Descending'}
                         </Button>
+                    </div>
                     </div>
                     <Table>
                         <TableHeader>
