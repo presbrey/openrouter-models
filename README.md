@@ -2,6 +2,8 @@
 
 This project is a web application that displays a table of AI models using data from the OpenRouter API. It's built with HTML, React, and Tailwind CSS, providing an interactive and responsive user interface.
 
+**[View the live AI Models Table](https://presbrey.github.io/openrouter-models)** 👈 Check it out!
+
 ## Features
 
 - Fetches AI model data from the OpenRouter API
